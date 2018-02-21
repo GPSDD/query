@@ -1,6 +1,6 @@
 {
   "name": "query",
-  "version": "1.1.0",
+  "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -41,7 +41,6 @@
     "config": "^1.21.0",
     "ct-register-microservice-node": "^2.0.2",
     "fs-promise": "^2.0.3",
-    "jiminy": "^0.1.1",
     "jsonapi-serializer": "2.1.1",
     "kcors": "^2.1.1",
     "koa": "^2.0.0",
