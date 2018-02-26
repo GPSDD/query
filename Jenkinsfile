@@ -25,7 +25,7 @@ node {
   currentBuild.result = "SUCCESS"
 
   checkout scm
-  properties([pipelineTriggers([[$class: 'GitHubPushTrigger'], pollSCM('0 * * * *')])])
+  properties([pipelineTriggers([[$class: 'GitHubPushTrigger']])])
 
   try {
 
@@ -41,7 +41,7 @@ node {
     }
 
     stage('Push Docker') {
-      withCredentials([usernamePassword(credentialsId: 'Vizzuality Docker Hub', usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
+      withCredentials([usernamePassword(credentialsId: 'Vizzuality_Docker_Hub', usernameVariable: 'DOCKER_HUB_USERNAME', passwordVariable: 'DOCKER_HUB_PASSWORD')]) {
         sh("docker login -u ${DOCKER_HUB_USERNAME} -p ${DOCKER_HUB_PASSWORD}")
         sh("docker push ${imageTag}")
         sh("docker push ${dockerUsername}/${appName}:latest")
@@ -74,7 +74,7 @@ node {
           }
           if (userInput == true && !didTimeout){
             sh("echo Deploying to PROD cluster")
-            sh("kubectl config use-context data4sdgs")
+            sh("kubectl config use-context stackpoint")
             def service = sh([returnStdout: true, script: "kubectl get deploy ${appName} || echo NotFound"]).trim()
             if ((service && service.indexOf("NotFound") > -1) || (forceCompleteDeploy)){
               sh("sed -i -e 's/{name}/${appName}/g' k8s/services/*.yaml")
