@@ -35,7 +35,7 @@
     "supertest": "^1.1.0"
   },
   "dependencies": {
-    "@google-cloud/storage": "^1.5.1",
+    "s3": "^4.4.0",
     "bluebird": "^3.4.7",
     "bunyan": "^1.8.5",
     "config": "^1.21.0",

@@ -57,11 +57,16 @@ spec:
                 secretKeyRef:
                   name: mssecrets
                   key: API_VERSION
-          - name: GCLOUD_STORAGE
+          - name: S3_ACCESS_KEY_ID
             valueFrom:
                 secretKeyRef:
                   name: mssecrets
-                  key: GCLOUD_BACKUPS_CREDENTIALS
+                  key: S3_ACCESS_KEY_ID
+          - name: S3_SECRET_ACCESS_KEY
+            valueFrom:
+                secretKeyRef:
+                  name: mssecrets
+                  key: S3_SECRET_ACCESS_KEY
 
         ports:
           - containerPort: 5000
