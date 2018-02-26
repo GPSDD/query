@@ -3,13 +3,29 @@ const logger = require('logger');
 const fs = require('fs-promise');
 const request = require('request');
 const requestPromise = require('request-promise');
-const Storage = require('@google-cloud/storage');
+const s3 = require('s3');
 const QueryService = require('services/query.service');
 const passThrough = require('stream').PassThrough;
 const ctRegisterMicroservice = require('ct-register-microservice-node');
 const JSONAPIDeserializer = require('jsonapi-serializer').Deserializer;
 
 const router = new Router();
+
+const S3_ACCESS_KEY_ID = process.env.S3_ACCESS_KEY_ID;
+const S3_SECRET_ACCESS_KEY = process.env.S3_SECRET_ACCESS_KEY;
+const S3Client = s3.createClient({
+    maxAsyncS3: 20, // this is the default
+    s3RetryCount: 3, // this is the default
+    s3RetryDelay: 1000, // this is the default
+    multipartUploadThreshold: 20971520, // this is the default (20 MB)
+    multipartUploadSize: 15728640, // this is the default (15 MB)
+    s3Options: {
+        accessKeyId: S3_ACCESS_KEY_ID,
+        secretAccessKey: S3_SECRET_ACCESS_KEY,
+        region: 'us-east-1'
+    }
+});
+
 
 function getHeadersFromResponse(response) {
     const validHeaders = {};
@@ -36,6 +52,30 @@ const deserializer = (obj) =>
 
 class QueryRouter {
 
+    static async uploadFileToS3(filePath, fileName) {
+        try {
+            logger.info('[SERVICE] Uploading to S3');
+            const key = `freeze/${fileName}`;
+            const params = {
+                localFile: filePath,
+                s3Params: {
+                    Bucket: 'wri-api-backups',
+                    Key: key,
+                    ACL: 'public-read'
+                }
+            };
+            const uploader = S3Client.uploadFile(params);
+            await new Promise((resolve, reject) => {
+                uploader.on('end', data => resolve(data));
+                uploader.on('error', err => reject(err));
+            });
+            const s3file = s3.getPublicUrlHttp(params.s3Params.Bucket, params.s3Params.Key);
+            return s3file;
+        } catch (err) {
+            throw err;
+        }
+    }
+
     static async freeze(options) {
         const nameFile = `${Date.now()}.json`;
         try {
@@ -46,16 +86,8 @@ class QueryRouter {
             const storage = new Storage();
             // uploading
             logger.debug('uploading file');
-            await storage
-            .bucket(process.env.BUCKET_FREEZE)
-            .upload(`/tmp/${nameFile}`);
-            logger.debug('making public');
-            const file = await storage
-            .bucket(process.env.BUCKET_FREEZE)
-            .file(nameFile)
-            .makePublic();
-            logger.debug('file', file);
-            return `https://storage.googleapis.com/${process.env.BUCKET_FREEZE}/${nameFile}`;
+            const url = await QueryRouter.uploadFileToS3(`/tmp/${nameFile}`, nameFile)
+            return url;
         } catch (err) {
             logger.error(err);
             throw err;
