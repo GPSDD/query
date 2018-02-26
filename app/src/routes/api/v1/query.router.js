@@ -6,13 +6,10 @@ const requestPromise = require('request-promise');
 const Storage = require('@google-cloud/storage');
 const QueryService = require('services/query.service');
 const passThrough = require('stream').PassThrough;
-const Jiminy = require('jiminy');
-
+const ctRegisterMicroservice = require('ct-register-microservice-node');
+const JSONAPIDeserializer = require('jsonapi-serializer').Deserializer;
 
 const router = new Router();
-
-const jiminyConfig = require('./jiminy.config');
-const charts = ['bar', 'line', 'pie', 'scatter', '1d_scatter', '1d_tick'];
 
 function getHeadersFromResponse(response) {
     const validHeaders = {};
@@ -24,6 +21,19 @@ function getHeadersFromResponse(response) {
     return validHeaders;
 }
 
+const deserializer = (obj) =>
+    new Promise((resolve, reject) => {
+        new JSONAPIDeserializer({
+            keyForAttribute: 'camelCase'
+        }).deserialize(obj, (err, data) => {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(data);
+        });
+    });
+
 class QueryRouter {
 
     static async freeze(options) {
@@ -31,7 +41,7 @@ class QueryRouter {
         try {
             logger.debug('Obtaining data');
             const data = await requestPromise(options);
-            await fs.writeFile(`/tmp/${nameFile}`, JSON.stringify(data.body));
+            await fs.writeFile(`/tmp/${nameFile}`, JSON.stringify(data));
             const storage = new Storage();
             // uploading
             logger.debug('uploading file');
@@ -54,7 +64,7 @@ class QueryRouter {
 
     static async query(ctx) {
         logger.info('Doing query');
-        
+
         const options = await QueryService.getTargetQuery(ctx);
         logger.debug('Doing request to adapter', options);
         if (!ctx.query.freeze || ctx.query.freeze !== 'true') {
@@ -78,7 +88,7 @@ class QueryRouter {
                 ctx.body = {
                     url
                 };
-            } catch(err) {
+            } catch (err) {
                 if (err.statusCode) {
                     ctx.throw(err.statusCode, err.details);
                     return;
@@ -89,53 +99,33 @@ class QueryRouter {
         }
     }
 
-    static async jiminy(ctx) {
-        logger.info('Doing jiminy');
-        try {
-
-            const options = await QueryService.getTargetQuery(ctx);
-            const fields = QueryService.getFieldsOfSql(ctx);
-            options.simple = true;
-            options.resolveWithFullResponse = false;
-            const body = await requestPromise(options);
-
-            const jiminy = new Jiminy(body.data, jiminyConfig);
-            const response = {};
-
-            response.general = jiminy.recommendation();
-            response.byColumns = {};
-            for (let i = 0, length = fields.length; i < length; i++) {
-                const column = fields[i].alias || fields[i].value;
-                response.byColumns[column] = jiminy.recommendation([column]);
-            }
-            response.byType = {};
-            for (let i = 0, length = charts.length; i < length; i++) {
-                response.byType[charts[i]] = {
-                    general: jiminy.columns(charts[i]),
-                    columns: {}
-                };
-                for (let j = 0, lengthColumns = fields.length; j < lengthColumns; j++) {
-                    const column = fields[j].alias || fields[j].value;
-                    response.byType[charts[i]].columns[column] = jiminy.columns(charts[i], column);
-                }
-
-            }
-            ctx.body = {
-                data: response
-            };
-
-        } catch (err) {
-            logger.error(err);
-        }
-
-    }
-
 }
 
-router.post('/query', QueryRouter.query);
-router.post('/download', QueryRouter.query);
-router.get('/jiminy', QueryRouter.jiminy);
-router.post('/jiminy', QueryRouter.jiminy);
+const datasetValidationMiddleware = async(ctx, next) => {
+    logger.info(`[QueryRouter] Validating dataset sandbox prop`);
+    try {
+        const loggedUser = ctx.request.body.loggedUser || JSON.parse(ctx.query.loggedUser);
+        const datasetId = QueryService.getTableOfSql(ctx);
+        let dataset = await ctRegisterMicroservice.requestToMicroservice({
+            uri: `/dataset/${datasetId}`,
+            json: true,
+            method: 'GET'
+        });
+        logger.debug('Dataset obtained correctly', dataset);
+        dataset = await deserializer(dataset);
+        if (!dataset.sandbox) {
+            if (loggedUser.role === 'USER') {
+                throw new Error('Not in the sandbox');
+            }
+        }
+    } catch (err) {
+        ctx.throw(403, 'Forbidden');
+    }
+    await next();
+};
 
+
+router.post('/query', datasetValidationMiddleware, QueryRouter.query);
+router.post('/download', datasetValidationMiddleware, QueryRouter.query);
 
 module.exports = router;
