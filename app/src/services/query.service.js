@@ -1,4 +1,3 @@
-const logger = require('logger');
 
 const Sql2json = require('sql2json').sql2json;
 const Json2sql = require('sql2json').json2sql;
@@ -6,6 +5,8 @@ const ctRegisterMicroservice = require('ct-register-microservice-node');
 const JSONAPIDeserializer = require('jsonapi-serializer').Deserializer;
 const ValidationError = require('errors/validation.error');
 const endpoints = require('services/endpoints');
+const logger = require('logger');
+
 
 const deserializer = (obj) =>
     new Promise((resolve, reject) => {
@@ -19,6 +20,7 @@ const deserializer = (obj) =>
             resolve(data);
         });
     });
+
 
 const containApps = (apps1, apps2) => {
     if (!apps1 || !apps2) {
@@ -56,23 +58,17 @@ const generateTemplateString = (function () {
         let fn = cache[template];
 
         if (!fn) {
-
             // Replace ${expressions} (etc) with ${map.expressions}.
-
             const sanitized = template
                 .replace(/\$\{([\s]*[^;\s\{]+[\s]*)\}/g, (_, match) => {
                     return `\$\{map.${match.trim()}\}`;
                 })
                 // Afterwards, replace anything that's not ${map.expressions}' (etc) with a blank string.
                 .replace(/(\$\{(?!map\.)[^}]+\})/g, '');
-
             fn = Function('map', `return \`${sanitized}\``);
-
         }
-
         return fn;
     }
-
     return generateTemplate;
 })();
 
@@ -259,6 +255,16 @@ class QueryService {
         if (sql) {
             const parsed = new Sql2json(sql).toJSON();
             return parsed.select;
+        }
+        return null;
+    }
+
+    static getTableOfSql(ctx) {
+        logger.debug('Obtaining fields');
+        const sql = ctx.query.sql || ctx.request.body.sql;
+        if (sql) {
+            const parsed = new Sql2json(sql).toJSON();
+            return parsed.from;
         }
         return null;
     }
