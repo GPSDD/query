@@ -4,7 +4,7 @@
 	"endpoints": [{
 		"path": "/v1/query",
 		"method": "GET",
-		"authenticated": true,
+		"authenticated": false,
 		"redirect": {
 			"method": "POST",
 			"path": "/api/v1/query"
@@ -12,7 +12,7 @@
 	},{
 		"path": "/v1/query",
 		"method": "POST",
-		"authenticated": true,
+		"authenticated": false,
 		"redirect": {
 			"method": "POST",
 			"path": "/api/v1/query"
@@ -20,7 +20,7 @@
 	},{
 		"path": "/v1/download",
 		"method": "GET",
-		"authenticated": true,
+		"authenticated": false,
 		"redirect": {
 			"method": "POST",
 			"path": "/api/v1/download"
@@ -28,7 +28,7 @@
 	},{
 		"path": "/v1/download",
 		"method": "POST",
-		"authenticated": true,
+		"authenticated": false,
 		"redirect": {
 			"method": "POST",
 			"path": "/api/v1/download"
