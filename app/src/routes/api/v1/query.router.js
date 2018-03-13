@@ -142,7 +142,7 @@ class QueryRouter {
 const datasetValidationMiddleware = async(ctx, next) => {
     logger.info(`[QueryRouter] Validating dataset sandbox prop`);
     try {
-        const loggedUser = ctx.request.body.loggedUser || JSON.parse(ctx.query.loggedUser);
+        
         const datasetId = QueryService.getTableOfSql(ctx);
         let dataset = await ctRegisterMicroservice.requestToMicroservice({
             uri: `/dataset/${datasetId}`,
@@ -151,9 +151,14 @@ const datasetValidationMiddleware = async(ctx, next) => {
         });
         logger.debug('Dataset obtained correctly', dataset);
         dataset = await deserializer(dataset);
+
         if (!dataset.sandbox) {
+            if (!ctx.request.body.loggedUser && !ctx.query.loggedUser) {
+                throw new Error('Not in the sandbox and not logged');
+            }
+            const loggedUser = ctx.request.body.loggedUser || JSON.parse(ctx.query.loggedUser);
             if (loggedUser.role === 'USER') {
-                throw new Error('Not in the sandbox');
+                throw new Error('Not in the sandbox and not logged');
             }
         }
     } catch (err) {
