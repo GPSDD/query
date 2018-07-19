@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "CT_URL=http://mymachine:9000 LOCAL_URL=http://mymachine:5000 API_VERSION=v1 NODE_PATH=app/src PORT=5000 node --harmony ./node_modules/.bin/grunt --gruntfile app/Gruntfile.js | bunyan",
-    "start": "NODE_PATH=app/src node app/index"
+    "start": "NODE_PATH=app/src node $NODE_DEBUG_OPTION app/index"
   },
   "keywords": [],
   "author": "",
