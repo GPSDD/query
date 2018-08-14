@@ -164,10 +164,6 @@ const datasetValidationMiddleware = async(ctx, next) => {
         if (!ctx.request.body.loggedUser && !ctx.query.loggedUser) {
             ctx.throw(403, 'You need an API key to access this dataset. Visit https://apihighways.org/ to get yours.');
         }
-        const loggedUser = ctx.request.body.loggedUser || JSON.parse(ctx.query.loggedUser);
-        if (loggedUser.role === 'USER') {
-            ctx.throw(403, 'Forbidden');
-        }
     }
 
     await next();
